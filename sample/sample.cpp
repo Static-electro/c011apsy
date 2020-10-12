@@ -65,6 +65,10 @@ bool saveResult( const Wave<Color>& wave, std::string path )
     std::vector<Color> result;
     result.reserve( field.size() );
 
+    // after the generation is done, each field cell contains only a single bit set to true.
+    // the position of the said bit is the id of the tile that should be placed in this cell
+    // note: tile is represented by a single value (topleft corner), so in this case
+    // we have the 1-to-1 relationship between the tile and the pixel color
     for ( const auto& cell : field )
     {
         size_t tileId = cell.first();
@@ -76,8 +80,8 @@ bool saveResult( const Wave<Color>& wave, std::string path )
 
 void callback( const Wave<Color>& wave, size_t x, size_t y )
 {
-    // please note, that the uncertainty value is has a lag in the callback
-    // because it's updated for each wave, whlle the callback itself is called
+    // please note, that the uncertainty value has a lag in the callback
+    // because it is updated once for each wave, whlle the callback itself is called
     // for each point of each wave
     std::cout << "[Callback] Current uncertainty: " << wave.getUncertainty() << "     \r";
 }
@@ -112,11 +116,12 @@ int main( int argc, char* argv[] )
     // algorithm will stop when the whole field is solved.
     // keep in mind the callback will be called for every processed point
     // and it could slow the generation process SIGNIFICANTLY.
-    // So, don't provide a callback if you do not striclty need the realtime algorithm info
+    // So, don't provide a callback if you do not strictly need the realtime algorithm info
 
     wave.collapse( false/*, callback*/ );
 #else
-    // Alternative variant, alogrithm will yield after every wave:
+    // Alternative variant, alogrithm will yield after every wave.
+    // You may still provide a callback to get the finer information about the generation state
     
     while ( !wave.collapse( true/*, callback*/ ) )
     {

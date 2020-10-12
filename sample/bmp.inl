@@ -49,8 +49,8 @@ bool writeBMP( const std::vector<Color>& data, uint32_t w, std::string filename 
     }
 
     const uint32_t h = static_cast<uint32_t>( data.size() ) / w;
-    uint32_t padding = (4 - ((w * 3) % 4)) % 4;
-    uint32_t paddedsize = ((w * 3) + padding) * h;
+    const uint32_t padding = (4 - ((w * 3) % 4)) % 4;
+    const uint32_t paddedsize = ((w * 3) + padding) * h;
 
     uint32_t headers[13] = { paddedsize + 54, 0, 54, 40, w, h, 0x180001, 0, paddedsize, 0, 0, 0, 0 };
 
