@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 #include <memory>
 #include <queue>
 #include <random>
@@ -10,9 +11,71 @@
 namespace c011apsy
 {
     /*
-    * Just a basic bitset that can be instantiated at runtime. See below
+    * Just a basic bitset that can be instantiated at runtime.
     */
-    class Bitset;
+    class Bitset
+    {
+        static const uint8_t Stride = 64; // uint64_t
+    public:
+        explicit Bitset( size_t size, bool on = false );
+
+        /*
+        * Get the number of significant bits
+        */
+        size_t size() const { return m_size; }
+
+        /*
+        * Get the value of a bit, readonly
+        */
+        bool operator[]( size_t index ) const;
+
+        /*
+        * Turn a specific bit on or off
+        */
+        void set( size_t index, bool on );
+
+        /*
+        * Set all bits to on or off
+        */
+        void reset( bool on );
+
+        /*
+        * Intersect this Bitset with another one. After the operation, the only bits
+        * turned on will be those that were turned on in both Bitsets
+        */
+        void intersect( const Bitset& other );
+
+        /*
+        * Create a uninon of two Bitsets. After the opertation, the bits will be turned on
+        * if they were turned on in either Bitset
+        */
+        void add( const Bitset& other );
+
+        /*
+        * Check if no bit is turned on
+        */
+        bool empty() const;
+
+        /*
+        * Get the number of bits turned on
+        */
+        size_t count() const;
+
+        /*
+        * Check if exatctly one bit is turned on
+        */
+        bool single() const;
+
+        /*
+        * Get the index of the first bit that is turned on.
+        * Return m_size if no bits are set
+        */
+        size_t first() const;
+
+    private:
+        std::vector<uint64_t> m_data;
+        size_t m_size;
+    };
 
     /*
     * The class that actually does all the work here
@@ -215,174 +278,140 @@ namespace c011apsy
         size_t m_uncertaintyCurrent;
     };
 
-    class Bitset
+    inline
+    Bitset::Bitset( size_t size, bool on )
+        : m_size( size )
     {
-        static const uint8_t Stride = 64; // uint64_t
-    public:
-        explicit Bitset( size_t size, bool on = false )
-            : m_size( size )
+        size_t dataSize = m_size / Stride + (m_size % Stride > 0);
+        m_data.resize( dataSize, on ? ~uint64_t( 0 ) : 0 );
+        m_data.back() >>= (Stride - m_size % Stride);
+    }
+
+    inline
+    bool Bitset::operator[]( size_t index ) const
+    {
+        assert( index < m_size && "Bitset::operator[] index out of bounds" );
+
+        const size_t dataId = index / Stride;
+        const uint8_t bitId = index % Stride;
+        return (m_data[dataId] >> bitId) & 0x1;
+    }
+
+    inline
+    void Bitset::set( size_t index, bool on )
+    {
+        assert( index < m_size && "Bitset::set() index out of bounds" );
+
+        const size_t dataId = index / Stride;
+        const uint8_t bitId = index % Stride;
+        const uint64_t mask = uint64_t( 1 ) << bitId;
+        if ( on )
         {
-            size_t dataSize = m_size / Stride + (m_size % Stride > 0);
-            m_data.resize( dataSize, on ? ~uint64_t( 0 ) : 0 );
-            m_data.back() >>= (Stride - m_size % Stride);
+            m_data[dataId] |= mask;
         }
-
-        /*
-        * Get the number of significant bits
-        */
-        size_t size() const { return m_size; }
-
-        /*
-        * Get the value of a bit, readonly
-        */
-        bool operator[]( size_t index ) const
+        else
         {
-            assert( index < m_size && "Bitset::operator[] index out of bounds" );
-
-            const size_t dataId = index / Stride;
-            const uint8_t bitId = index % Stride;
-            return (m_data[dataId] >> bitId) & 0x1;
+            m_data[dataId] &= (~mask);
         }
+    }
 
-        /*
-        * Turn a specific bit on or off
-        */
-        void set( size_t index, bool on )
+    inline
+    void Bitset::reset( bool on )
+    {
+        uint64_t c = on ? ~uint64_t( 0 ) : 0;
+        for ( size_t i = 0; i < m_data.size(); ++i )
         {
-            assert( index < m_size && "Bitset::set() index out of bounds" );
-
-            const size_t dataId = index / Stride;
-            const uint8_t bitId = index % Stride;
-            const uint64_t mask = uint64_t( 1 ) << bitId;
-            if ( on )
-            {
-                m_data[dataId] |= mask;
-            }
-            else
-            {
-                m_data[dataId] &= (~mask);
-            }
+            m_data[i] = c;
         }
+        m_data.back() >>= (Stride - m_size % Stride);
+    }
 
-        /*
-        * Set all bits to on or off
-        */
-        void reset( bool on )
+    inline
+    void Bitset::intersect( const Bitset& other )
+    {
+        assert( other.m_size == m_size && "Bitset::intersect() size mismatch" );
+        for ( size_t i = 0; i < m_data.size(); ++i )
         {
-            uint64_t c = on ? ~uint64_t( 0 ) : 0;
-            for ( size_t i = 0; i < m_data.size(); ++i )
-            {
-                m_data[i] = c;
-            }
-            m_data.back() >>= (Stride - m_size % Stride);
+            m_data[i] &= other.m_data[i];
         }
+    }
 
-        /*
-        * Intersect this Bitset with another one. After the operation, the only bits
-        * turned on will be those that were turned on in both Bitsets
-        */
-        void intersect( const Bitset& other )
+    inline
+    void Bitset::add( const Bitset& other )
+    {
+        assert( other.m_size == m_size && "Bitset::add() size mismatch" );
+        for ( size_t i = 0; i < m_data.size(); ++i )
         {
-            assert( other.m_size == m_size && "Bitset::intersect() size mismatch" );
-            for ( size_t i = 0; i < m_data.size(); ++i )
-            {
-                m_data[i] &= other.m_data[i];
-            }
+            m_data[i] |= other.m_data[i];
         }
+    }
 
-        /*
-        * Create a uninon of two Bitsets. After the opertation, the bits will be turned on
-        * if they were turned on in either Bitset
-        */
-        void add( const Bitset& other )
+    inline
+    bool Bitset::empty() const
+    {
+        for ( uint64_t n : m_data )
         {
-            assert( other.m_size == m_size && "Bitset::add() size mismatch" );
-            for ( size_t i = 0; i < m_data.size(); ++i )
+            if ( n )
             {
-                m_data[i] |= other.m_data[i];
+                return false;
             }
         }
+        return true;
+    }
 
-        /*
-        * Check if no bit is turned on
-        */
-        bool empty() const
+    inline
+    size_t Bitset::count() const
+    {
+        size_t result = 0;
+        for ( uint64_t n : m_data )
         {
-            for ( uint64_t n : m_data )
+            while ( n )
             {
-                if ( n )
+                n &= (n - 1);
+                result++;
+            }
+        }
+        return result;
+    }
+
+    inline
+    bool Bitset::single() const
+    {
+        bool result = false;
+        for ( uint64_t n : m_data )
+        {
+            if ( n )
+            {
+                if ( result || (n & (n - 1)) )
                 {
                     return false;
                 }
+                result = true;
             }
-            return true;
         }
+        return result;
+    }
 
-        /*
-        * Get the number of bits turned on
-        */
-        size_t count() const
+    inline
+    size_t Bitset::first() const
+    {
+        size_t step = 0;
+        for ( uint64_t n : m_data )
         {
-            size_t result = 0;
-            for ( uint64_t n : m_data )
+            if ( n )
             {
-                while ( n )
+                uint8_t bit = 0;
+                while ( (n & 1) == 0 )
                 {
-                    n &= (n - 1);
-                    result++;
+                    ++bit;
+                    n >>= 1;
                 }
+                return step + bit;
             }
-            return result;
+            step += Stride;
         }
-
-        /*
-        * Check if exatctly one bit is turned on
-        */
-        bool single() const
-        {
-            bool result = false;
-            for ( uint64_t n : m_data )
-            {
-                if ( n )
-                {
-                    if ( result || (n & (n - 1)) )
-                    {
-                        return false;
-                    }
-                    result = true;
-                }
-            }
-            return result;
-        }
-
-        /*
-        * Get the index of the first bit that is turned on.
-        * Return m_size if no bits are set
-        */
-        size_t first() const
-        {
-            size_t step = 0;
-            for ( uint64_t n : m_data )
-            {
-                if ( n )
-                {
-                    uint8_t bit = 0;
-                    while ( (n & 1) == 0 )
-                    {
-                        ++bit;
-                        n >>= 1;
-                    }
-                    return step + bit;
-                }
-                step += Stride;
-            }
-            return m_size;
-        }
-
-    private:
-        std::vector<uint64_t> m_data;
-        size_t m_size;
-    };
+        return m_size;
+    }
 
     template<class T>
     struct Wave<T>::Neighbors
