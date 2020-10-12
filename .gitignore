@@ -37,4 +37,6 @@
 *.filters
 *.user
 .vs/*
-x64/*
+.vscode/*
+
+build/*
