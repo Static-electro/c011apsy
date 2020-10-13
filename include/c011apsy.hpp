@@ -149,8 +149,8 @@ namespace c011apsy
         * Run the collapse process.
         * @param onestep a flag that tells the Wave you only want one simulation step at a time. 
         * If this parameter is true, you need to call this method until it returns true to obtain the final result
-        * @param callback a callback function, it will be called after each successful cell collapse, i.e. when
-        * a cell is left with only one possible tile to place in it
+        * @param callback a callback function, it will be called after each processed cell.
+        * Keep in mind it may take several steps to set a cell to its final value
         */
         bool collapse( bool oneStep, Callback c = nullptr );
 
@@ -170,7 +170,7 @@ namespace c011apsy
         const Field& getField() const;
 
         /*
-        * Get the tiles that was generated for this Wave
+        * Get the tiles that were generated for this Wave
         */
         const std::vector<T>& getTiles() const;
 
@@ -193,7 +193,7 @@ namespace c011apsy
         void collapseStep( size_t id0, Callback c );
 
         /*
-        * Perform the cell collapse. It uses the tiles weights to determine which tile to place
+        * Perform the cell collapse. It uses the tiles' weights to determine which tile to place
         * @param id the index of a cell to collapse
         */
         void collapseCell( size_t id );
