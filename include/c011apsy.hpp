@@ -221,8 +221,7 @@ namespace c011apsy
         */
         void propagate(
             size_t id0,
-            std::queue<size_t>& wavefront,
-            const std::vector<bool>& visited );
+            std::queue<size_t>& wavefront );
 
         /**
         * Check two tiles if they could be placed alongside each other
@@ -273,6 +272,9 @@ namespace c011apsy
         std::vector<Bitset> m_possibleNeighbors; /// this is used in filterCandidates()
         std::unique_ptr<std::mt19937_64> m_mt;
         Field m_field;
+        std::vector<bool> m_visited; /// store visited cell within a single step
+        std::vector<bool> m_collapsed; /// store cells that are solved, i.e. has only one tile
+        std::vector<size_t> m_collapseCandidates; /// this is used when a cell is collapsed by force
         size_t m_fieldW;
         size_t m_fieldH;
         size_t m_uncertaintyCurrent;
@@ -503,7 +505,7 @@ namespace c011apsy
 
                 for ( size_t i = 0; i < tileHeight; ++i )
                 {
-                    memcpy( &tile[i * tileWidth], &pattern[startId], sizeof( tile[0] ) * tileWidth );
+                    memcpy( &tile[i * tileWidth], &pattern[startId], sizeof( T ) * tileWidth );
                     startId += patternWidth;
                 }
 
@@ -612,28 +614,24 @@ namespace c011apsy
 
         std::queue<size_t> collapseFront;
 
-        std::vector<bool> visited( m_field.size() );
-        for ( size_t i = 0; i < m_field.size(); ++i )
-        {
-            visited[i] = m_field[i].single();
-        }
+        m_visited = m_collapsed;
 
-        propagate( id0, collapseFront, visited );
+        propagate( id0, collapseFront );
 
         while ( !collapseFront.empty() )
         {
             const size_t currentId = collapseFront.front();
             collapseFront.pop();
 
-            if ( visited[currentId] )
+            if ( m_visited[currentId] )
             {
                 continue;
             }
 
-            visited[currentId] = true;
+            m_visited[currentId] = true;
 
-            auto& place = m_field[currentId];
-            size_t initialVariance = place.count();
+            const auto& place = m_field[currentId];
+            const size_t initialVariance = place.count();
 
             if ( initialVariance == 1 )
             {
@@ -642,9 +640,14 @@ namespace c011apsy
 
             filterCandidates( currentId );
 
-            if ( initialVariance != place.count() )
+            const size_t variance = place.count();
+            if ( initialVariance != variance )
             {
-                propagate( currentId, collapseFront, visited );
+                if ( variance == 1 )
+                {
+                    m_collapsed[currentId] = true;
+                }
+                propagate( currentId, collapseFront );
             }
 
             if ( c )
@@ -659,13 +662,12 @@ namespace c011apsy
     {
         filterCandidates( id );
         const auto& cell = m_field[id];
-        static std::vector<size_t> candidates;
-        candidates.clear();
+        m_collapseCandidates.clear();
         if ( cell.empty() )
         {
             for ( size_t i = 0; i < m_seed.tiles.size(); ++i )
             {
-                candidates.insert( candidates.end(), m_seed.weights[i], i );
+                m_collapseCandidates.insert( m_collapseCandidates.end(), m_seed.weights[i], i );
             }
         }
         else
@@ -674,16 +676,17 @@ namespace c011apsy
             {
                 if ( cell[i] )
                 {
-                    candidates.insert( candidates.end(), m_seed.weights[i], i );
+                    m_collapseCandidates.insert( m_collapseCandidates.end(), m_seed.weights[i], i );
                 }
             }
         }
 
-        std::uniform_int_distribution<size_t> rnd( 0, candidates.size() - 1 );
-        size_t startTile = candidates[rnd( *m_mt )];
+        std::uniform_int_distribution<size_t> rnd( 0, m_collapseCandidates.size() - 1 );
+        size_t startTile = m_collapseCandidates[rnd( *m_mt )];
 
         m_field[id].reset( false );
         m_field[id].set( startTile, true );
+        m_collapsed[id] = true;
     }
 
     template<class T>
@@ -761,43 +764,34 @@ namespace c011apsy
     template<class T>
     void Wave<T>::propagate(
         size_t id0,
-        std::queue<size_t>& wavefront,
-        const std::vector<bool>& visited )
+        std::queue<size_t>& wavefront )
     {
+        auto push = [&]( size_t id )
+        {
+            if ( !m_visited[id] && !m_field[id].single() )
+            {
+                wavefront.push( id );
+            }
+        };
+
         const size_t x = id0 % m_fieldW;
         const size_t y = id0 / m_fieldW;
 
         if ( y > 0 ) // Up
         {
-            const size_t id = fieldIndex( x, y - 1 );
-            if ( !visited[id] && !m_field[id].single() )
-            {
-                wavefront.push( id );
-            }
+            push( fieldIndex( x, y - 1 ) );
         }
         if ( y < m_fieldH - 1 ) // Down
         {
-            const size_t id = fieldIndex( x, y + 1 );
-            if ( !visited[id] && !m_field[id].single() )
-            {
-                wavefront.push( id );
-            }
+            push( fieldIndex( x, y + 1 ) );
         }
         if ( x > 0 ) // Left
         {
-            const size_t id = fieldIndex( x - 1, y );
-            if ( !visited[id] && !m_field[id].single() )
-            {
-                wavefront.push( id );
-            }
+            push( fieldIndex( x - 1, y ) );
         }
         if ( x < m_fieldW - 1 ) // Right
         {
-            const size_t id = fieldIndex( x + 1, y );
-            if ( !visited[id] && !m_field[id].single() )
-            {
-                wavefront.push( id );
-            }
+            push( fieldIndex( x + 1, y ) );
         }
     }
 
@@ -918,5 +912,7 @@ namespace c011apsy
         }
         m_allTiles = Bitset( m_seed.tiles.size(), true );
         m_field.resize( m_fieldW * m_fieldH, Bitset( m_seed.tiles.size(), true ) );
+        m_visited.resize( m_fieldW * m_fieldH, false );
+        m_collapsed.resize( m_fieldW * m_fieldH, false );
     }
 }
