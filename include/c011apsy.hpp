@@ -94,7 +94,7 @@ namespace c011apsy
         * @param x
         * @param y coordinates of the last processed field cell
         */
-        using Callback = void (*)( const Wave<T>& wave, size_t x, size_t y );
+        using Callback = void (*)( Wave<T>& wave, size_t x, size_t y );
 
         /*
         * A lame enum to make it easier to navigate inside the field
@@ -155,9 +155,10 @@ namespace c011apsy
         bool collapse( bool oneStep, Callback c = nullptr );
 
         /*
-        * Get the current field uncertainty. If it's equal to 1 that means the algorithm is done and the field is solved
+        * Get the current operation progress, percent
+        * @note don't expect the progress to grow in a constant pace
         */
-        float getUncertainty() const;
+        float getProgress() const;
 
         /*
         * Get the initial Wave state. You may use this seed to iniitialize other waves, or to save/load the Wave's state.
@@ -576,9 +577,12 @@ namespace c011apsy
     }
 
     template<class T>
-    float Wave<T>::getUncertainty() const
+    float Wave<T>::getProgress() const
     {
-        return m_uncertaintyCurrent / static_cast<float>( m_field.size() );
+        const size_t uncertaintyMax = m_field.size() * m_seed.tiles.size();
+        const size_t uncertaintyMin = m_field.size();
+        const float progress = ( uncertaintyMax - m_uncertaintyCurrent ) / static_cast<float>( uncertaintyMax - uncertaintyMin );
+        return progress * 100.f;
     }
 
     template<class T>
@@ -663,21 +667,12 @@ namespace c011apsy
         filterCandidates( id );
         const auto& cell = m_field[id];
         m_collapseCandidates.clear();
-        if ( cell.empty() )
+
+        for ( size_t i = 0; i < cell.size(); ++i )
         {
-            for ( size_t i = 0; i < m_seed.tiles.size(); ++i )
+            if ( cell[i] )
             {
                 m_collapseCandidates.insert( m_collapseCandidates.end(), m_seed.weights[i], i );
-            }
-        }
-        else
-        {
-            for ( size_t i = 0; i < cell.size(); ++i )
-            {
-                if ( cell[i] )
-                {
-                    m_collapseCandidates.insert( m_collapseCandidates.end(), m_seed.weights[i], i );
-                }
             }
         }
 

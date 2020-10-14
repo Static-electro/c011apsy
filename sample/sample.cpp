@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -78,12 +79,12 @@ bool saveResult( const Wave<Color>& wave, std::string path )
     return writeBMP( result, static_cast<uint32_t>( wave.getFieldWidth() ), path );
 }
 
-void callback( const Wave<Color>& wave, size_t x, size_t y )
+void callback( Wave<Color>& wave, size_t x, size_t y )
 {
-    // please note, that the uncertainty value has a lag in the callback
+    // please note, that the progress value has a lag in the callback
     // because it is updated once for each wave, whlle the callback itself is called
     // for each point of each wave
-    std::cout << "[Callback] Current uncertainty: " << wave.getUncertainty() << "     \r";
+    std::cout << "[Callback] Current progress: " << wave.getProgress() << "%     \r";
 }
 
 int main( int argc, char* argv[] )
@@ -99,18 +100,25 @@ int main( int argc, char* argv[] )
     uint32_t seedH;
     auto seed = readBMP( args.src, seedW, seedH );
 
+    using clock = std::chrono::system_clock;
+    using msec = std::chrono::duration<double, std::milli>;
+    auto before = clock::now();
+
     // create a wave with the specified dimensions
     Wave<Color> wave( args.resW, args.resH );
 
-    std::cout << "Generating tiles... This may take a while." << std::endl;
+    std::cout << "Generating tiles..." << std::endl;
 
     // initialize the wave with the given pattern
     wave.init( seed, seedW, seedH, args.winW, args.winH, args.rndSeed );
 
-    std::cout << wave.getTiles().size() << " tiles were generated." << std::endl;
-    std::cout << "Generating result. The operation completes when the field uncertainty converges to 1.0" << std::endl;
+    msec duration = clock::now() - before;
+
+    std::cout << wave.getTiles().size() << " tiles were generated. It took " << duration.count() << " ms" << std::endl;
+    std::cout << "Generating result..." << std::endl;
 
     // start the wave collapse
+    before = clock::now();
 
 #if 1
     // algorithm will stop when the whole field is solved.
@@ -125,11 +133,14 @@ int main( int argc, char* argv[] )
     
     while ( !wave.collapse( true/*, callback*/ ) )
     {
-        std::cout << "Uncertainty is " << wave.getUncertainty() << "     \r";
+        std::cout << "Generating: " << wave.getProgress() << "%     \r";
     }
 #endif
 
+    duration = clock::now() - before;
+
     std::cout << std::endl;
+    std::cout << "Generation took " << duration.count() << " ms" << std::endl;
 
     if ( !saveResult( wave, args.dst ) )
     {
