@@ -1,9 +1,10 @@
-# c011apsy
-A small single-header C++ library that implements pattern generation via Wavefunction Collapse algorithm
-
 ## Table of contents
 
-{:toc}
+* [What?](https://github.com/Static-electro/c011apsy#what)
+* [Basic Usage](https://github.com/Static-electro/c011apsy#basic-usage)
+* [Sample](https://github.com/Static-electro/c011apsy#sample)
+* [Algorithm Implementation](https://github.com/Static-electro/c011apsy#algorithm-implementation)
+* [Usage HIghlights](https://github.com/Static-electro/c011apsy#usage-highlights)
 
 
 ## What?
@@ -12,13 +13,38 @@ A small single-header C++ library that implements pattern generation via Wavefun
 
 ## Basic Usage
 
+```C++
+#include <include/c011apsy.hpp>
+...
+using namespace c011apsy;
+Wave<TileType> wave( resultWidth, resultHeight );
+...
+wave.init( seed, seedWidth, seedHeight, tileWidth, tileHeight, rndSeed );
+...
+wave.collapse( false );
+...
+const auto& tiles = wave.getTiles();
+const auto& field = wave.getField();
+
+std::vector<TileType> result;
+result.reserve( field.size() );
+
+for ( const auto& cell : field )
+{
+  size_t tileId = cell.first();
+  result.push_back( tiles[tileId] );
+}
+```
+
+### Explanation
+
 To use `c011apsy` no build is needed, just include the header:
 
 ```C++
 #include <include/c011apsy.hpp>
 ```
 
-There are two ways of generating a pattern with `c011apsy` - from a seed pattern, or from an existing tileset (see **Usage HIghlights**)
+There are two ways of generating a pattern with `c011apsy` - from a seed pattern, or from an existing tileset (see [Usage HIghlights](https://github.com/Static-electro/c011apsy#usage-highlights))
 
 Whichever approach you choose, the start is the same:
 
@@ -35,7 +61,7 @@ Now, you need to initialize this wave. If you have a pattern you'd like to use a
 wave.init( seed, seedWidth, seedHeight, tileWidth, tileHeight, rndSeed );
 ```
 
-`seed` is the `std::vector<TileType>` - basically a block of memory where your seed pattern is stored row-by-row. `seedWidth` and `seedHeight` are pretty self-explanatory, they represent the seed dimensions. `tileWidth` and `tileHeight` are a bit tricky, although you can think of them as single tile dimensions. In reality they are more like "local similarity area dimensions", again, see **Usage HIghlights** for more details. `rndSeed` is an integer value to initialize the random numbers generator. Same `rndSeed` value will produce identical pattern generated across any number of runs. Leave it as default or set it to zero if you want every run to be unique.
+`seed` is the `std::vector<TileType>` - basically a block of memory where your seed pattern is stored row-by-row. `seedWidth` and `seedHeight` are pretty self-explanatory, they represent the seed dimensions. `tileWidth` and `tileHeight` are a bit tricky, although you can think of them as single tile dimensions. In reality they are more like "local similarity area dimensions", again, see [Usage HIghlights](https://github.com/Static-electro/c011apsy#usage-highlights) for more details. `rndSeed` is an integer value to initialize the random numbers generator. Same `rndSeed` value will produce identical pattern generated across any number of runs. Leave it as default or set it to zero if you want every run to be unique.
 
 If you don't have a seed pattern but a prepared tileset instead, use this initialization form:
 
@@ -66,7 +92,7 @@ wave.init( mySeed );
 
 Here, using some tile id as `TileType` makes the most sense.
 
-Now you are ready to start the generation! `c011apsy` provides fine-ish control over the generation process. You can either run it all in one go, or step-by-step (see **Algorithm Implementation**). You may also provide a callback, which will be called each time an output cell (e.g. a pixel) is updated. However, keep in mind that a callback often is a *HUGE* performance killer, beware.
+Now you are ready to start the generation! `c011apsy` provides fine-ish control over the generation process. You can either run it all in one go, or step-by-step (see [Algorithm Implementation](https://github.com/Static-electro/c011apsy#algorithm-implementation)). You may also provide a callback, which will be called each time an output cell (e.g. a pixel) is updated. However, keep in mind that a callback often is a *HUGE* performance killer, beware.
 
 ```C++;
 void callback( const Wave<TileType>& w, size_t x, size_t y );
@@ -117,7 +143,7 @@ sample img/pipes.bmp 4 4 generated.bmp 128 128 42
 
 Here, sample will load `img/pipes.bmp` as a seed, and then it will generate the 128x128 output using the 4x4 tiles. The last parameter (42) is a random number generator seed, it may be omitted. Result will be saved as `generated.bmp` in the current directory.
 
-Note: `c011apsy` will need *at least* `min( 8, number_of_tiles / 8 ) * result_area` bytes to process the request, while the `number_of_tiles` generated from a seed pattern may be up to `( seed_width - tile_width + 1 ) * ( seed_height - tile_height + 1 )`. To put this into perspective: 128x128 seed with 32x32 tiles and 1024x1024 result will require more than 1 Gb of memory. Please see **Algorithm implementation** and **Usage Highlights** sections to get more details on the restrictions and best practices.
+**Note:** `c011apsy` will need *at least* `min( 8, number_of_tiles / 8 ) * result_area` bytes to process the request, while the `number_of_tiles` generated from a seed pattern may be up to `( seed_width - tile_width + 1 ) * ( seed_height - tile_height + 1 )`. To put this into perspective: 128x128 seed with 32x32 tiles and 1024x1024 result will require more than 1Gb of memory. Please see [Algorithm Implementation](https://github.com/Static-electro/c011apsy#algorithm-implementation) and [Usage HIghlights](https://github.com/Static-electro/c011apsy#usage-highlights) sections to get more details on the restrictions and best practices.
 
 
 ## Algorithm Implementation
@@ -146,7 +172,7 @@ It starts from creating the output - a field of MxN cells. Initially, each field
 8. for each cell in the queue, repeat the process from step (2)
 9. repeat the process from step (1) until every field cell has only one possible tile to place in (step-by-step generation approach exits here every time)
 
-![Scrolling window](/img/tiles.gif)
+
 
 ## Usage Highlights
 
