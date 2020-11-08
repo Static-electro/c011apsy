@@ -58,7 +58,7 @@ bool parseArgs( int argc, char* argv[], Args& args )
     return true;
 }
 
-bool saveResult( const Wave<Color>& wave, std::string path )
+bool saveResult( Wave<Color>& wave, std::string path )
 {
     const auto& tiles = wave.getTiles();
     const auto& field = wave.getField();

@@ -168,7 +168,7 @@ namespace c011apsy
         /*
         * Get the current field state.
         */
-        const Field& getField() const;
+        Field& getField();
 
         /*
         * Get the tiles that were generated for this Wave
@@ -185,7 +185,6 @@ namespace c011apsy
         */
         size_t getFieldHeight() const;
 
-    private:
         /*
         * Run the single step
         * @param id0 the index of the cell that will be collapsed by force
@@ -193,6 +192,7 @@ namespace c011apsy
         */
         void collapseStep( size_t id0, Callback c );
 
+    private:
         /*
         * Perform the cell collapse. It uses the tiles' weights to determine which tile to place
         * @param id the index of a cell to collapse
@@ -553,7 +553,7 @@ namespace c011apsy
     }
 
     template<class T>
-    const typename Wave<T>::Field& Wave<T>::getField() const
+    typename Wave<T>::Field& Wave<T>::getField()
     {
         return m_field;
     }
