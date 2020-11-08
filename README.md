@@ -1,6 +1,7 @@
 ## Table of contents
 
 * [What?](https://github.com/Static-electro/c011apsy#what)
+* [Build?](https://github.com/Static-electro/c011apsy#build)
 * [Basic Usage](https://github.com/Static-electro/c011apsy#basic-usage)
 * [Sample](https://github.com/Static-electro/c011apsy#sample)
 * [Algorithm Implementation](https://github.com/Static-electro/c011apsy#algorithm-implementation)
@@ -8,8 +9,23 @@
 
 
 ## What?
-`c011apsy` (collapsy) is my take on the Wave Function Collapse (WFC) algorithm of pattern generation. The idea behind `c011apsy` was to create an easy-to-use production-ready library that could be used in just a few lines of code. 
+`c011apsy` (collapsy) is my take on the Wave Function Collapse (WFC) algorithm of pattern generation. The idea behind `c011apsy` was to create a crossplatform header-only library that could be used in just a few lines of code.
 
+## Build
+
+`c011apsy` is a header-only library, so it doesn't need to be built. You can just include the header (`include/c011apsy.hpp`) and start using it.
+However, the repository includes the cmake file that can be used to integrate the library into the existing project.
+If you want to build a sample program, you have several options:
+1. If your preferred IDE supports project import from cmake files then use this feature
+2. You may also create an empty project in your IDE of choice and just add the header and the source files in it (`include/c011apsy.hpp` and `sample/sample.cpp`)
+3. Another option is to use the cmake CLI:
+```
+mkdir build
+cd build
+cmake ../
+cmake --build ./
+```
+4. And of course, it's possible to use the CLI of your preferred compiler. Tell it you need to build `sample/sample.cpp`, that should be enough for it to do all the work
 
 ## Basic Usage
 
@@ -55,7 +71,7 @@ Wave<TileType> wave( resultWidth, resultHeight );
 
 `TileType` here should be a POD-type, instances of which could be compared by `memcmp`. Each cell of the output will contain an object of this type. Usually, it's either some struct representing a color, or just a tile id that you can substitute for a real object later. `resultWidth` and `resultHeight` represent the output dimensions of the generated pattern.
 
-Now, you need to initialize this wave. If you have a pattern you'd like to use as a seed use this form:
+Now, you need to initialize this wave. If you have a pattern you'd like to use as a seed then use this form:
 
 ```C++
 wave.init( seed, seedWidth, seedHeight, tileWidth, tileHeight, rndSeed );
@@ -74,13 +90,14 @@ mySeed.tiles = ...
 
 // integer numbers representing each tile's weight.
 // Tiles with larger weights are more likely to be placed.
-// The dimensions of this vector have to be the same as mySeed.tiles
+// The size of this vector must be the same as mySeed.tiles
 mySeed.weights = ...
 
 // placement rules that tell which tiles could be placed next to each other:
 // mySeed.neighbors[i] describes the possible neighbors of mySeed.tiles[i]
-// each element of the Neighbor struct has four sets to describe the tile ids allowed to
-// be placed in the corresponding direction (up/down/left/right)
+// each element of the Neighbor struct has four sets to describe the tile ids
+// that are allowed to be placed in the corresponding
+// direction (up/down/left/right)
 // tile ids here are the indices from the mySeed.tiles array
 mySeed.neighbors = ...
 
@@ -90,7 +107,7 @@ mySeed.rndSeed = ...
 wave.init( mySeed );
 ```
 
-Here, using some tile id as `TileType` makes the most sense.
+Using some tile id as `TileType` makes the most sense here.
 
 Now you are ready to start the generation! `c011apsy` provides fine-ish control over the generation process. You can either run it all in one go, or step-by-step (see [Algorithm Implementation](https://github.com/Static-electro/c011apsy#algorithm-implementation)). You may also provide a callback, which will be called each time an output cell (e.g. a pixel) is updated. However, keep in mind that a callback often is a *HUGE* performance killer, beware.
 
@@ -170,7 +187,7 @@ It starts from creating the output - a field of MxN cells. Initially, each field
 	1. depending on the initial tileset and the rules, it's quite possible that the result of (5) is empty. In this case you may either pick any tile at random, or use the _union_ of the four neighboring sets as a pool for picking a tile
 7. mark cell *C* as visited, add its neighbors to the processing queue
 8. for each cell in the queue, repeat the process from step (2)
-9. repeat the process from step (1) until every field cell has only one possible tile to place in (step-by-step generation approach exits here every time)
+9. repeat the process from step (1) until every field cell is left with only one possible tile to place in (step-by-step generation approach exits here every time)
 
 
 
