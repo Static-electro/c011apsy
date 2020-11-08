@@ -7,7 +7,7 @@ endif()
 project( c011apsy )
 
 add_library( ${PROJECT_NAME} INTERFACE )
-target_compile_features( ${PROJECT_NAME} INTERFACE cxx_std_11 )
+target_compile_features( ${PROJECT_NAME} INTERFACE cxx_std_14 )
 target_include_directories( ${PROJECT_NAME} INTERFACE include )
 
 if ( BUILD_C011APSY_SAMPLE )
